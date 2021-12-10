@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">SmartLockNSMSVerifyLib</string>
+
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="action_save_credential">Save\nCredential</string>
+    <string name="load_credentials">Load\nCredentials</string>
+    <string name="delete_credential">Delete\nCredential</string>
+    <string name="load_hint">Load\nHint</string>
+    <string name="label_request_id_token">Request ID Token:</string>
+</resources>
