@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -166,6 +167,19 @@ namespace OneDevApp.SmartCredentials.Demo
                     outputLogTxt.text = "Save Credential - " + isSuccess;
                 });
             });
+        }
+
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                var match = Regex.Match("You OTP is : 1963    L5Qy+JE8Crk", @"([0-9]{4})");
+                Debug.Log(match.Success);
+                if (match.Success)
+                {
+                    Debug.Log(match.Value);
+                }
+            }
         }
 
     }

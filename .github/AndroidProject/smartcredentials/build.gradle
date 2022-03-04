@@ -31,7 +31,7 @@ android {
                     }
                 }
                 //into project.buildDir
-                into('/../../../ReleaseFiles/')
+                into('/../../ReleaseFiles/')
             }
             /*copy {
                 from('/../../../release/')
@@ -54,8 +54,12 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
-
+def myJarFolder = '/../../../ReleaseFiles/'
 dependencies {
+    // Dependency on a local library module (this won't work!)
+    //compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+    //compileOnly fileTree(dir: myJarFolder + 'classes.jar', include: ['*.jar'])
+    compileOnly files('libs/classes.jar')
     compileOnly 'com.google.android.gms:play-services-auth:19.2.0'
     compileOnly 'com.google.android.gms:play-services-auth-api-phone:17.5.1'
 }

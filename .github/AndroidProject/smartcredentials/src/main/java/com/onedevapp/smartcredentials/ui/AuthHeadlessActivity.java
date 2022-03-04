@@ -29,25 +29,21 @@ import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.onedevapp.smartcredentials.AuthManager;
-import com.onedevapp.smartcredentials.R;
-import com.onedevapp.smartcredentials.listeners.OTPReceiveListener;
 import com.onedevapp.smartcredentials.receivers.SMSReceiveBroadcastReceiver;
 import com.onedevapp.smartcredentials.utilities.Constants;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class AuthHeadlessActivity extends FragmentActivity implements OTPReceiveListener {
+public class AuthHeadlessActivity extends FragmentActivity {
 
     CredentialsClient mCredentialsApiClient;
     CredentialRequest mCredentialRequest;
-    SMSReceiveBroadcastReceiver smsReceiver;
-    String regexOTPPattern;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.headless_fragmentactivity);
+        //setContentView(R.layout.headless_fragmentactivity);
 
         // Instantiate client for interacting with the credentials API. For this demo
         // application we forcibly enable the SmartLock save dialog, which is sometimes
@@ -69,11 +65,6 @@ public class AuthHeadlessActivity extends FragmentActivity implements OTPReceive
     void handleIntent(Intent intent) {
         if (intent == null || intent.getExtras() == null) return;
 
-        if (intent.getExtras().containsKey("regexOTP")) {
-            regexOTPPattern = intent.getExtras().getString("regexOTP");
-        } else {
-            regexOTPPattern = Constants.regexOTPPattern;
-        }
         if (intent.getExtras().containsKey("type")) {
             switch (intent.getExtras().getInt("type", 0)) {
                 case 0:
@@ -83,22 +74,15 @@ public class AuthHeadlessActivity extends FragmentActivity implements OTPReceive
                     requestHintEmailAddress(intent.getExtras().getStringArray("accountTypes"));
                     break;
                 case 2:
-                    startListening();
-                    break;
-                case 3:
                     requestStoredCredential(intent.getExtras().getStringArray("accountTypes"));
                     break;
-                case 4:
+                case 3:
                     saveToStoredCredential(
                             intent.getExtras().getString("email"),
                             intent.getExtras().getString("password"),
                             intent.getExtras().getString("accountType"),
                             intent.getExtras().getString("displayName"),
                             intent.getExtras().getString("profilePicUrl"));
-                    break;
-                case 5:
-                    removeOTPListener();
-                    finish();
                     break;
                 default:
                     break;
@@ -137,36 +121,6 @@ public class AuthHeadlessActivity extends FragmentActivity implements OTPReceive
         }
     }
 
-    void startListening() {
-        try {
-            smsReceiver = new SMSReceiveBroadcastReceiver();
-            smsReceiver.setOTPListener(this);
-
-            SmsRetrieverClient client = SmsRetriever.getClient(this);
-            client.startSmsUserConsent(null);
-            Task<Void> task = client.startSmsRetriever();
-            task.addOnSuccessListener(aVoid -> {
-                // API successfully started
-
-                IntentFilter intentFilter = new IntentFilter();
-                intentFilter.addAction(SmsRetriever.SMS_RETRIEVED_ACTION);
-                registerReceiver(smsReceiver, intentFilter);
-                //registerReceiver(smsVerificationReceiver, intentFilter);
-                /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    registerReceiver(smsVerificationReceiver, SmsRetriever.SEND_PERMISSION, intentFilter);
-                }else{
-                    registerReceiver(smsVerificationReceiver, intentFilter);
-                }*/
-            });
-            task.addOnFailureListener(e -> {
-                // Fail to start API
-                unregisterReceiver(smsReceiver);
-                //unregisterReceiver(smsVerificationReceiver);
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
     void saveToStoredCredential(String emailOrMobile, String password, String accountType, String displayName, String profilePicUrl) {
         Credential credential = null;
@@ -267,26 +221,6 @@ public class AuthHeadlessActivity extends FragmentActivity implements OTPReceive
                 });
     }
 
-    @Override
-    public void onOTPReceived(String otpValue) {
-        invokeOTPResultNRemove(parseOneTimeCode(otpValue), Constants.SMS_RECEIVER_OPT_RECEIVED);
-    }
-
-    @Override
-    public void onSuccess(Intent intent) {
-        startActivityForResult(intent, Constants.REQUEST_SMS_CONSENT);
-    }
-
-    @Override
-    public void onOTPTimeOut() {
-        invokeOTPResultNRemove("", Constants.SMS_RECEIVER_TIMEOUT);
-    }
-
-    @Override
-    public void onOTPReceivedError(String error) {
-        invokeOTPResultNRemove(error, Constants.SMS_RECEIVER_ERROR);
-    }
-
     /**
      * Handle the request result when user switch back from Settings.
      */
@@ -301,9 +235,6 @@ public class AuthHeadlessActivity extends FragmentActivity implements OTPReceive
                 Credential credentials = data.getParcelableExtra(Credential.EXTRA_KEY);
                 String value = credentials.getId(); //get the selected phone number
                 invokeHintResultNRemove(value, Constants.AUTH_HINTS_AVAILABLE);
-            } else if (requestCode == Constants.REQUEST_SMS_CONSENT) {
-                String message = data.getStringExtra(SmsRetriever.EXTRA_SMS_MESSAGE);
-                invokeOTPResultNRemove(parseOneTimeCode(message), Constants.SMS_RECEIVER_OPT_RECEIVED);
             } else if (requestCode == Constants.REQUEST_SAVE_CREDENTIALS) {
                 invokeResultNRemove(true);
             } else if (requestCode == Constants.REQUEST_READ_CREDENTIALS) {
@@ -315,35 +246,12 @@ public class AuthHeadlessActivity extends FragmentActivity implements OTPReceive
         } else {
             if (requestCode == Constants.REQUEST_HINT_EMAIL_ID || requestCode == Constants.REQUEST_HINT_MOBILE_NO) {
                 invokeHintResultNRemove("", Constants.AUTH_NO_HINTS_AVAILABLE);
-            } else if (requestCode == Constants.REQUEST_SMS_CONSENT) {
-                invokeOTPResultNRemove("", Constants.SMS_RECEIVER_ERROR);
             } else if (requestCode == Constants.REQUEST_SAVE_CREDENTIALS) {
                 invokeResultNRemove(false);
             } else if (requestCode == Constants.REQUEST_READ_CREDENTIALS) {
                 invokeCredentialsResultNRemove(null, Constants.AUTH_NO_HINTS_AVAILABLE);
             }
         }
-    }
-
-    String parseOneTimeCode(String message) {
-        String value = "";
-        if(message == null || message.isEmpty()) return value;
-
-        try{
-            //This is the full message
-            Pattern pattern = Pattern.compile(regexOTPPattern);
-            Matcher matcher = pattern.matcher(message);
-            /*Your ExampleApp code is: 123ABC78 FA+9qCX9VSu*/
-
-            //Extract the OTP code and send to the listener
-            // Extract one-time code from the message and complete verification
-            if (matcher.find()) {
-                System.out.println(matcher.group(1));
-                value = matcher.group(1);
-            }
-        }catch (Exception ignored){}
-
-        return value;
     }
 
     void invokeResultNRemove(boolean status) {
@@ -358,12 +266,6 @@ public class AuthHeadlessActivity extends FragmentActivity implements OTPReceive
         finish();
     }
 
-    void invokeOTPResultNRemove(String value, int errorCode) {
-        Constants.WriteLog("OnOTPRetrieved::errorCode::" + errorCode + "::value::" + value);
-        AuthManager.getInstance().OnOTPRetrieved(value, errorCode);
-        finish();
-    }
-
     void invokeCredentialsResultNRemove(Credential credential, int errorCode) {
         if(credential != null)
             Constants.WriteLog("OnCredentialsRetrieved::errorCode::" + errorCode + "::userId::" + credential.getId() + "::password::" + credential.getPassword() + "::accountType::" + credential.getAccountType());
@@ -371,22 +273,5 @@ public class AuthHeadlessActivity extends FragmentActivity implements OTPReceive
             Constants.WriteLog("OnCredentialsRetrieved::errorCode::" + errorCode + "::userId:: ::password:: ::accountType::");
         AuthManager.getInstance().OnCredentialsRetrieved(credential, errorCode);
         finish();
-    }
-
-    void removeOTPListener() {
-        if (smsReceiver != null) {
-            unregisterReceiver(smsReceiver);
-            smsReceiver = null;
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        try {
-            removeOTPListener();
-        } catch (Exception e) {
-            // already unregistered
-        }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace OneDevApp.SmartCredentials
@@ -31,6 +32,10 @@ namespace OneDevApp.SmartCredentials
         /// </summary>
         private static event Action<string, int> OnResultAction;
         /// <summary>
+        /// Event triggered when user selected any hint value or  when otp received
+        /// </summary>
+        private static event Action<string, int> OnOtpAction;
+        /// <summary>
         /// Event triggered with user credential details
         /// </summary>
         private static event Action<string, string, string, int> OnCredentialsRetrievedAction;
@@ -49,6 +54,7 @@ namespace OneDevApp.SmartCredentials
         [SerializeField]
         private string m_unityMainActivity = "com.unity3d.player.UnityPlayer";
 
+        public string RegexPattern { get; set; }
         public bool DebugMode { get; private set; }
 
 #pragma warning restore 0414
@@ -174,21 +180,20 @@ namespace OneDevApp.SmartCredentials
 #endif
         }
 
-        public void StartListeningForOTP(Action<string, int> OnOTPFetchedAction, string regexOTPPattern = "")
+        public void StartListeningForOTP(Action<string, int> OnOTPFetchedAction, string regexOTPPattern = @"([0-9]{4})")
         {
-            if (OnResultAction != null)
-                OnResultAction = null;
+            if (OnOtpAction != null)
+                OnOtpAction = null;
 
-            OnResultAction = OnOTPFetchedAction;
+            OnOtpAction = OnOTPFetchedAction;
+            RegexPattern = regexOTPPattern;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
             using (AndroidJavaClass jc = new AndroidJavaClass("com.onedevapp.smartcredentials.AuthManager"))
             {
                 var mAuthManager = jc.CallStatic<AndroidJavaObject>("getInstance");
                 mAuthManager.Call<AndroidJavaObject>("setActivity", mContext);
-                if(!string.IsNullOrEmpty(regexOTPPattern))
-                    mAuthManager.Call<AndroidJavaObject>("setOTPPattern", regexOTPPattern);
-                mAuthManager.Call("StartListening", new OnResultListener());
+                mAuthManager.Call("StartListening");
             }
 #elif UNITY_EDITOR
             if (DebugMode)
@@ -198,6 +203,7 @@ namespace OneDevApp.SmartCredentials
 
         public void StopListeningForOTP()
         {
+            OnOtpAction = null;
 #if UNITY_ANDROID && !UNITY_EDITOR
 
             using (AndroidJavaClass jc = new AndroidJavaClass("com.onedevapp.smartcredentials.AuthManager"))
@@ -348,6 +354,33 @@ namespace OneDevApp.SmartCredentials
         }
         
 #endif
+
+        void OnOtpReceiveSuccess(string value)
+        {
+            if (OnOtpAction != null)
+            {
+                var match = Regex.Match(value, RegexPattern);
+                Debug.Log(match.Success);
+                if (match.Success)
+                {
+                    OnOtpAction.Invoke(match.Value, (int)OTPErrorCode.SMS_RECEIVER_OPT_RECEIVED);
+                }
+                else
+                {
+                    OnOtpAction.Invoke("", (int)OTPErrorCode.SMS_RECEIVER_OPT_PARSE_ERROR);
+                }
+            }
+            StopListeningForOTP();
+        }
+        
+        void OnOtpReceiveError(string value)
+        {
+            if (OnOtpAction != null)
+            {
+                OnOtpAction.Invoke("", int.Parse(value));
+            }
+            StopListeningForOTP();
+        }
     }
 
 }

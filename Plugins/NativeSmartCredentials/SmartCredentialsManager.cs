@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace OneDevApp.SmartCredentials
@@ -49,6 +50,7 @@ namespace OneDevApp.SmartCredentials
         [SerializeField]
         private string m_unityMainActivity = "com.unity3d.player.UnityPlayer";
 
+        public string RegexPattern { get; set; }
         public bool DebugMode { get; private set; }
 
 #pragma warning restore 0414
@@ -174,21 +176,20 @@ namespace OneDevApp.SmartCredentials
 #endif
         }
 
-        public void StartListeningForOTP(Action<string, int> OnOTPFetchedAction, string regexOTPPattern = "")
+        public void StartListeningForOTP(Action<string, int> OnOTPFetchedAction, string regexOTPPattern = @"([0-9]{4})")
         {
             if (OnResultAction != null)
                 OnResultAction = null;
 
             OnResultAction = OnOTPFetchedAction;
+            RegexPattern = regexOTPPattern;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
             using (AndroidJavaClass jc = new AndroidJavaClass("com.onedevapp.smartcredentials.AuthManager"))
             {
                 var mAuthManager = jc.CallStatic<AndroidJavaObject>("getInstance");
                 mAuthManager.Call<AndroidJavaObject>("setActivity", mContext);
-                if(!string.IsNullOrEmpty(regexOTPPattern))
-                    mAuthManager.Call<AndroidJavaObject>("setOTPPattern", regexOTPPattern);
-                mAuthManager.Call("StartListening", new OnResultListener());
+                mAuthManager.Call("StartListening");
             }
 #elif UNITY_EDITOR
             if (DebugMode)
@@ -261,13 +262,13 @@ namespace OneDevApp.SmartCredentials
 #endif
         }
 
-        public void DeleteSavedCredentials(Action<bool> OnSavedAction)
+        public void DeleteSavedCredentials(Action<bool> OnDeleteAction)
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (credentialTempObj == null)
             {
                 Debug.Log("Credential to delete, cant be null");
-                OnSavedAction?.Invoke(false);
+                OnDeleteAction?.Invoke(false);
                 return;
             }
 
@@ -276,7 +277,7 @@ namespace OneDevApp.SmartCredentials
                 
             OnCredentialsStatusAction = (isSuccess)=> {
                 credentialTempObj = null;
-                OnSavedAction?.Invoke(isSuccess);
+                OnDeleteAction?.Invoke(isSuccess);
                 OnCredentialsStatusAction = null;
             };
 
@@ -348,6 +349,34 @@ namespace OneDevApp.SmartCredentials
         }
         
 #endif
+
+        void OnOtpReceiveSuccess(string value)
+        {
+            if (OnResultAction != null)
+            {
+                var match = Regex.Match(value, RegexPattern);
+                Debug.Log(match.Success);
+                if (match.Success)
+                {
+                    OnResultAction.Invoke(match.Value, (int)OTPErrorCode.SMS_RECEIVER_OPT_RECEIVED);
+                    OnResultAction = null;
+                }
+                else
+                {
+                    OnResultAction.Invoke("", (int)OTPErrorCode.SMS_RECEIVER_OPT_PARSE_ERROR);
+                    OnResultAction = null;
+                }
+            }
+        }
+        
+        void OnOtpReceiveError(string value)
+        {
+            if (OnResultAction != null)
+            {
+                OnResultAction.Invoke("", int.Parse(value));
+                OnResultAction = null;
+            }
+        }
     }
 
 }

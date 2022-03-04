@@ -8,19 +8,15 @@ import android.os.Bundle;
 import com.google.android.gms.auth.api.phone.SmsRetriever;
 import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.common.api.Status;
-import com.onedevapp.smartcredentials.listeners.OTPReceiveListener;
+import com.onedevapp.smartcredentials.utilities.Constants;
+import com.unity3d.player.UnityPlayer;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SMSReceiveBroadcastReceiver  extends BroadcastReceiver {
 
-    private OTPReceiveListener otpListener;
-    private String regexOTPPattern = "(\\d{4})";
-
-    /**
-     * @param otpListener Listener
-     */
-    public void setOTPListener(OTPReceiveListener otpListener) {
-        this.otpListener = otpListener;
-    }
+    private String regexOTPPattern = ":\\s([0-9]{4})";
 
     /**
      * @param otpRegex OTP Pattern
@@ -39,60 +35,50 @@ public class SMSReceiveBroadcastReceiver  extends BroadcastReceiver {
         if (SmsRetriever.SMS_RETRIEVED_ACTION.equals(intent.getAction())) {
             Bundle extras = intent.getExtras();
             Status status = (Status) extras.get(SmsRetriever.EXTRA_STATUS);
+            Constants.WriteLog("status.getStatusCode()::"+status.getStatusCode());
             switch (status.getStatusCode()) {
                 case CommonStatusCodes.SUCCESS:
+                    //This is the full message
                     Intent messageIntent = extras.getParcelable(SmsRetriever.EXTRA_CONSENT_INTENT);
                     String message = (String) extras.get(SmsRetriever.EXTRA_SMS_MESSAGE);
-                    //otpListener.onSuccess(messageIntent);
-                    otpListener.onOTPReceived(message);
+                    if(message == null || message.isEmpty()){
+                        UnityPlayer.UnitySendMessage("SmartCredentialManager", "OnOtpReceiveError", String.valueOf(Constants.SMS_RECEIVER_ERROR));
+                    }else{
+                        Constants.WriteLog(message);
+                        //String input = "Your OTP code is : 1234\r\n" + "\r\n" + "FA+9qCX9VSu";
+                        /*String value = "";
+                        Pattern regex = Pattern.compile(regexOTPPattern);
+                        Matcher m = regex.matcher(message);
+                        try{
+                            if (m.find()) {
+                                System.out.println(m.group(1));
+                                value = m.group(1);
+                            }
+                        }catch(Exception e){
+                            Constants.WriteLog(e.toString());
+                        }*/
 
-                    //This is the full message
-                    /*String message = (String) extras.get(SmsRetriever.EXTRA_SMS_MESSAGE);
-
-                    Pattern pattern = Pattern.compile(regexOTPPattern);
-                    Matcher matcher = pattern.matcher(message);
-                    *//*<#> Your ExampleApp code is: 123ABC78 FA+9qCX9VSu*//*
-
-                    //Extract the OTP code and send to the listener
-
-                    if (otpListener != null) {
-                        // Extract one-time code from the message and complete verification
-                        String value = "";
-                        if (matcher.find()) {
-                            System.out.println(matcher.group(1));
-                            value = matcher.group(1);
-                        }
-                        otpListener.onOTPReceived(value);
-                    }*/
+                        UnityPlayer.UnitySendMessage("SmartCredentialManager", "OnOtpReceiveSuccess", message);
+                    }
                     break;
                 case CommonStatusCodes.TIMEOUT:
-                    // Waiting for SMS timed out (5 minutes)
-                    if (otpListener != null) {
-                        otpListener.onOTPTimeOut();
-                    }
+                    UnityPlayer.UnitySendMessage("SmartCredentialManager", "OnOtpReceiveError", String.valueOf(Constants.SMS_RECEIVER_TIMEOUT));
                     break;
 
                 case CommonStatusCodes.API_NOT_CONNECTED:
 
-                    if (otpListener != null) {
-                        otpListener.onOTPReceivedError("API NOT CONNECTED");
-                    }
-
+                    UnityPlayer.UnitySendMessage("SmartCredentialManager", "OnOtpReceiveError", String.valueOf(Constants.SMS_RECEIVER_API_NOT_CONNECTED));
                     break;
 
                 case CommonStatusCodes.NETWORK_ERROR:
 
-                    if (otpListener != null) {
-                        otpListener.onOTPReceivedError("NETWORK ERROR");
-                    }
+                    UnityPlayer.UnitySendMessage("SmartCredentialManager", "OnOtpReceiveError", String.valueOf(Constants.SMS_RECEIVER_NETWORK_ERROR));
 
                     break;
 
                 case CommonStatusCodes.ERROR:
 
-                    if (otpListener != null) {
-                        otpListener.onOTPReceivedError("SOME THING WENT WRONG");
-                    }
+                    UnityPlayer.UnitySendMessage("SmartCredentialManager", "OnOtpReceiveError", String.valueOf(Constants.SMS_RECEIVER_ERROR));
 
                     break;
 

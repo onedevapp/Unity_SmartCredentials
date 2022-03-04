@@ -2,6 +2,7 @@ package com.onedevapp.smartcredentials;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.IntentFilter;
 
 import androidx.annotation.NonNull;
 
@@ -9,11 +10,14 @@ import com.google.android.gms.auth.api.credentials.Credential;
 import com.google.android.gms.auth.api.credentials.Credentials;
 import com.google.android.gms.auth.api.credentials.CredentialsClient;
 import com.google.android.gms.auth.api.credentials.CredentialsOptions;
+import com.google.android.gms.auth.api.phone.SmsRetriever;
+import com.google.android.gms.auth.api.phone.SmsRetrieverClient;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.onedevapp.smartcredentials.listeners.OnCredentialsResultListener;
 import com.onedevapp.smartcredentials.listeners.OnCredentialsStatusListener;
 import com.onedevapp.smartcredentials.listeners.OnResultListener;
+import com.onedevapp.smartcredentials.receivers.SMSReceiveBroadcastReceiver;
 import com.onedevapp.smartcredentials.ui.AuthHeadlessActivity;
 import com.onedevapp.smartcredentials.utilities.AppSignatureHelper;
 import com.onedevapp.smartcredentials.utilities.Constants;
@@ -41,6 +45,7 @@ public class AuthManager {
     private OnCredentialsStatusListener mOnCredentialsStatusListener; //Callback listener
 
     private String regexOTPPattern = "";
+    private SMSReceiveBroadcastReceiver smsReceiver;
     //endregion
 
     //region Constructor
@@ -104,23 +109,17 @@ public class AuthManager {
     public void StopListening() {
         getActivity().runOnUiThread(() -> {
 
-            Intent intent = new Intent(getActivity(), AuthHeadlessActivity.class);
-            intent.putExtra("type", 5);
-            getActivity().startActivity(intent);
+            if (smsReceiver != null) {
+                getActivity().unregisterReceiver(smsReceiver);
+                smsReceiver = null;
+            }
         });
     }
 
-    public void StartListening(OnResultListener resultListener) {
+    public void StartListening() {
         getActivity().runOnUiThread(() -> {
             if (IsPlayServiceAvailable()) return;
-
-            this.mOnResultListener = resultListener;
-
-            Intent intent = new Intent(getActivity(), AuthHeadlessActivity.class);
-            intent.putExtra("type", 2);
-            if (!regexOTPPattern.isEmpty())
-                intent.putExtra("regexOTP", regexOTPPattern);
-            getActivity().startActivity(intent);
+            startListening();
         });
     }
 
@@ -131,7 +130,7 @@ public class AuthManager {
             mOnCredentialsResultListener = onRetrieveListener;
 
             Intent intent = new Intent(getActivity(), AuthHeadlessActivity.class);
-            intent.putExtra("type", 3);
+            intent.putExtra("type", 2);
             intent.putExtra("accountTypes", accountTypes);
             getActivity().startActivity(intent);
         });
@@ -151,7 +150,7 @@ public class AuthManager {
             this.mOnCredentialsStatusListener = mOnStatusListener;
 
             Intent intent = new Intent(getActivity(), AuthHeadlessActivity.class);
-            intent.putExtra("type", 4);
+            intent.putExtra("type", 3);
             intent.putExtra("email", emailOrMobile);
             intent.putExtra("password", password);
             intent.putExtra("accountType", accountType);
@@ -216,17 +215,39 @@ public class AuthManager {
         }
     }
 
-    public void OnOTPRetrieved(String value, int errorCode) {
+    public void OnHintSelected(String value, int errorCode) {
         if (mOnResultListener != null) {
             mOnResultListener.onResult(value, errorCode);
             mOnResultListener = null;
         }
     }
 
-    public void OnHintSelected(String value, int errorCode) {
-        if (mOnResultListener != null) {
-            mOnResultListener.onResult(value, errorCode);
-            mOnResultListener = null;
+    void startListening() {
+        try {
+
+            SmsRetrieverClient client = SmsRetriever.getClient(getActivity());
+            client.startSmsUserConsent(null);
+            Task<Void> task = client.startSmsRetriever();
+            task.addOnSuccessListener(aVoid -> {
+                // API successfully started
+                smsReceiver = new SMSReceiveBroadcastReceiver();
+                smsReceiver.setOTPRegex(regexOTPPattern);
+                IntentFilter intentFilter = new IntentFilter();
+                intentFilter.addAction(SmsRetriever.SMS_RETRIEVED_ACTION);
+                getActivity().registerReceiver(smsReceiver, intentFilter);
+                /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    registerReceiver(smsVerificationReceiver, SmsRetriever.SEND_PERMISSION, intentFilter);
+                }else{
+                    registerReceiver(smsVerificationReceiver, intentFilter);
+                }*/
+            });
+            task.addOnFailureListener(e -> {
+                // Fail to start API
+                //unregisterReceiver(smsVerificationReceiver);
+
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

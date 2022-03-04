@@ -13,7 +13,8 @@ namespace OneDevApp.SmartCredentials
     {
         SMS_RECEIVER_OPT_RECEIVED = 0,
         SMS_RECEIVER_ERROR = 1,
-        SMS_RECEIVER_TIMEOUT = 2
+        SMS_RECEIVER_TIMEOUT = 2,
+        SMS_RECEIVER_OPT_PARSE_ERROR = 3
     }
 
     public enum ReadCredentialErrorCode

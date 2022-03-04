@@ -13,6 +13,8 @@ public class Constants {
     public static final int SMS_RECEIVER_OPT_RECEIVED = 0;
     public static final int SMS_RECEIVER_ERROR = 1;
     public static final int SMS_RECEIVER_TIMEOUT = 2;
+    public static final int SMS_RECEIVER_API_NOT_CONNECTED = 3;
+    public static final int SMS_RECEIVER_NETWORK_ERROR = 4;
 
     public static final int REQUEST_HINT_MOBILE_NO = 9861;
     public static final int REQUEST_HINT_EMAIL_ID = 9862;
