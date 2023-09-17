@@ -29,7 +29,7 @@ public class Constants {
     /**
      * To write library messages to logcat
      */
-    public static boolean enableLog = true;
+    public static boolean enableLog = false;
 
     /**
      * WriteLog to log library messages to logcat

@@ -59,11 +59,11 @@ public class MainActivity extends AppCompatActivity {
         btnGetOtp.setOnClickListener(v -> {
             // Call server API for requesting OTP and when you got success start
             // SMS Listener for listing auto read message listener
-            authManager.StartListening((message, statusCode) -> {
+            /*authManager.StartListening((message, statusCode) -> {
                 if(statusCode == 0){
                     inputOtp.setText(message);
                 }
-            });
+            });*/
             layoutInput.setVisibility(View.GONE);
             layoutVerify.setVisibility(View.VISIBLE);
         });

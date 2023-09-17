@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
@@ -32,6 +30,10 @@ namespace OneDevApp.SmartCredentials
         /// </summary>
         private static event Action<string, int> OnResultAction;
         /// <summary>
+        /// Event triggered when user selected any hint value or  when otp received
+        /// </summary>
+        private static event Action<string, int> OnOtpAction;
+        /// <summary>
         /// Event triggered with user credential details
         /// </summary>
         private static event Action<string, string, string, int> OnCredentialsRetrievedAction;
@@ -52,7 +54,6 @@ namespace OneDevApp.SmartCredentials
 
         public string RegexPattern { get; set; }
         public bool DebugMode { get; private set; }
-
 #pragma warning restore 0414
 
 
@@ -136,8 +137,7 @@ namespace OneDevApp.SmartCredentials
         #region SmartLock
         public void RequestMobileNoHint(Action<string, int> OnMobileHintAction)
         {
-            if (OnResultAction != null)
-                OnResultAction = null;
+            RemoveHintAction();
 
             OnResultAction = OnMobileHintAction;
 
@@ -157,8 +157,7 @@ namespace OneDevApp.SmartCredentials
 
         public void RequestEmailAddressHint(Action<string, int> OnEmailHintAction, params string[] accountTypes)
         {
-            if (OnResultAction != null)
-                OnResultAction = null;
+            RemoveHintAction();
 
             OnResultAction = OnEmailHintAction;
 
@@ -176,12 +175,18 @@ namespace OneDevApp.SmartCredentials
 #endif
         }
 
-        public void StartListeningForOTP(Action<string, int> OnOTPFetchedAction, string regexOTPPattern = @"([0-9]{4})")
+        public void RemoveHintAction()
         {
             if (OnResultAction != null)
                 OnResultAction = null;
+        }
 
-            OnResultAction = OnOTPFetchedAction;
+        public void StartListeningForOTP(Action<string, int> OnOTPFetchedAction, string regexOTPPattern = @"([0-9]{4})")
+        {
+            if (OnOtpAction != null)
+                OnOtpAction = null;
+
+            OnOtpAction = OnOTPFetchedAction;
             RegexPattern = regexOTPPattern;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -199,6 +204,7 @@ namespace OneDevApp.SmartCredentials
 
         public void StopListeningForOTP()
         {
+            OnOtpAction = null;
 #if UNITY_ANDROID && !UNITY_EDITOR
 
             using (AndroidJavaClass jc = new AndroidJavaClass("com.onedevapp.smartcredentials.AuthManager"))
@@ -313,7 +319,7 @@ namespace OneDevApp.SmartCredentials
         /// By default puglin console log will be diabled, but can be enabled
         /// </summary>
         /// <param name="showLog">If set true then log will be displayed else disabled</param>
-        public void PluginDebug(bool showLog = true)
+        public void PluginDebug(bool showLog = false)
         {
             DebugMode = showLog;
 
@@ -352,30 +358,29 @@ namespace OneDevApp.SmartCredentials
 
         void OnOtpReceiveSuccess(string value)
         {
-            if (OnResultAction != null)
+            if (OnOtpAction != null)
             {
                 var match = Regex.Match(value, RegexPattern);
                 Debug.Log(match.Success);
                 if (match.Success)
                 {
-                    OnResultAction.Invoke(match.Value, (int)OTPErrorCode.SMS_RECEIVER_OPT_RECEIVED);
-                    OnResultAction = null;
+                    OnOtpAction.Invoke(match.Value, (int)OTPErrorCode.SMS_RECEIVER_OPT_RECEIVED);
                 }
                 else
                 {
-                    OnResultAction.Invoke("", (int)OTPErrorCode.SMS_RECEIVER_OPT_PARSE_ERROR);
-                    OnResultAction = null;
+                    OnOtpAction.Invoke("", (int)OTPErrorCode.SMS_RECEIVER_OPT_PARSE_ERROR);
                 }
             }
+            StopListeningForOTP();
         }
         
         void OnOtpReceiveError(string value)
         {
-            if (OnResultAction != null)
+            if (OnOtpAction != null)
             {
-                OnResultAction.Invoke("", int.Parse(value));
-                OnResultAction = null;
+                OnOtpAction.Invoke("", int.Parse(value));
             }
+            StopListeningForOTP();
         }
     }
 

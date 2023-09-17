@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
@@ -56,7 +54,6 @@ namespace OneDevApp.SmartCredentials
 
         public string RegexPattern { get; set; }
         public bool DebugMode { get; private set; }
-
 #pragma warning restore 0414
 
 
@@ -140,8 +137,7 @@ namespace OneDevApp.SmartCredentials
         #region SmartLock
         public void RequestMobileNoHint(Action<string, int> OnMobileHintAction)
         {
-            if (OnResultAction != null)
-                OnResultAction = null;
+            RemoveHintAction();
 
             OnResultAction = OnMobileHintAction;
 
@@ -161,8 +157,7 @@ namespace OneDevApp.SmartCredentials
 
         public void RequestEmailAddressHint(Action<string, int> OnEmailHintAction, params string[] accountTypes)
         {
-            if (OnResultAction != null)
-                OnResultAction = null;
+            RemoveHintAction();
 
             OnResultAction = OnEmailHintAction;
 
@@ -178,6 +173,12 @@ namespace OneDevApp.SmartCredentials
             if (DebugMode)
                 Debug.Log("Platform not supported");
 #endif
+        }
+
+        public void RemoveHintAction()
+        {
+            if (OnResultAction != null)
+                OnResultAction = null;
         }
 
         public void StartListeningForOTP(Action<string, int> OnOTPFetchedAction, string regexOTPPattern = @"([0-9]{4})")
@@ -318,7 +319,7 @@ namespace OneDevApp.SmartCredentials
         /// By default puglin console log will be diabled, but can be enabled
         /// </summary>
         /// <param name="showLog">If set true then log will be displayed else disabled</param>
-        public void PluginDebug(bool showLog = true)
+        public void PluginDebug(bool showLog = false)
         {
             DebugMode = showLog;
 
