@@ -1,6 +1,0 @@
-﻿<dependencies>
-  <androidPackages>
-    <androidPackage spec="com.google.android.gms:play-services-auth:20.7.0"/>
-    <androidPackage spec="com.google.android.gms:play-services-auth-api-phone:18.0.1"/>
-  </androidPackages>
-</dependencies>

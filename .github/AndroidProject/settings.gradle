@@ -1,3 +1,0 @@
-include ':smartcredentials'
-include ':demo'
-rootProject.name = "AndroidProject"
