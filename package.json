@@ -1,0 +1,21 @@
+{
+  "name": "com.onedevapp.smartcredentials",
+  "displayName": "Native Smart Credentials",
+  "version": "1.2.0",
+  "documentationUrl": "https://github.com/onedevapp/Unity_SmartCredentials/blob/main/.github/README.md",
+  "changelogUrl": "",
+  "licensesUrl": "https://github.com/onedevapp/Unity_SmartCredentials/blob/main/LICENSE",
+  "author": {
+    "name": "OneDevApp",
+    "email": "onedevapp@gmail.com",
+    "url": "https://github.com/onedevapp/Unity_SmartCredentials"
+  },
+  "samples": [
+    {
+        "displayName": "Smart Credentials Demo",
+        "description": "Contains sample for Smart Credentials",
+        "path": "Samples~/Samples"
+    }
+  ],
+  "description": "Unity plugin helps you in include Android Smart Credentials feature, in which you can save or retrieve credentials, get hint of available mobile number or email id and also fetches OTP value from SMS. \nNote: currently supported platform is Android only.\n\n For details: https://developers.google.com/identity/smartlock-passwords/android/overview"
+}
